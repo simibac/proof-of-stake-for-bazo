@@ -1,0 +1,156 @@
+\chapter{Related Work}
+
+This chapter introduces the two different types of PoS consensus mechanisms that currently exist. Further, it explains what challenges PoS algorithms face in general and what possible attacks must be prevented when designing a new consensus mechanism.
+
+\section{Different Types of PoS}\label{different-types-of-pos}
+From all the currently available implementations of PoS consensus mechanisms one can distinguish between two categories - chain-based protocols and Byzantine agreement protocols. Both types are described thouroughly by means of successful implementations in other blockchains. 
+
+Both types consider the amount of coins that each validator has deposited in the system in order to create a payout proportionally to the number of coins that are possessed by a validator. A validator with 50 coins should on average receive five times the staking reward that a validator with only 10 coins does.
+
+\subsection{Chain-Based Protocols}
+In this category of PoS consensus algorithms a validator is chosen randomly from the validator set in order to append the next block. This random election solely depends on information that is stored within the blockchain, such as the height of a particular block or the amount of coins a validator possesses. 
+
+\subsubsection{Peercoin (PPCoin)}\label{ppcoin}
+In PPCoin the right of appending the next block is assigned to the validator that is in compliance with the condition (\ref{ppcoin-pos}) \cite{cryptocurrencies-without-pow}. 
+
+\begin{equation} 
+\label{ppcoin-pos}
+\frac{hash(PrevBlockData \cdot TimeInSec \cdot  TxOut)}{Coins(TxOut)*TimeWeight(TxOut)} \leq Target
+\end{equation}
+
+\begin{description}
+	\item[TxOut] A validator must deposit a minimum amount of coins to an unspendable address when joining the set of validators. \textit{TxOut} represents this transaction, which is different for every individual validator.
+	
+	\item[Target] This constant determines the speed of the blockchain.
+	
+	\item[Coins(TxOutA)] This parameter represents the amount of coins that a validator has deposited into the unspendable address.
+	
+	\item[TimeWeight(TxOut)] PPCoin uses a mechanism called coin aging \cite{ppcoin_paper} which prevents stakeholders with a significant fraction of all the coins from adding multiple consecutive blocks. This variable is reset when a validator has successfully appended a block. Coin aging makes the protocol vulnerable to attacks. A malicious node can hold back coins in multiple addresses for a long period of time to accumulate a large coin age. The likelihood of being elected multiple times in a row is increased proportionally to the accumulated coin age. Due to this reason PPCoin limited the maximal amount of \textit{TimeWeight(TxOut)} to 90 days in their v0.3 protocol \cite{cryptocurrencies-without-pow}.
+	
+	\item[TimeInSec] PPCoin's random election process is similar to the algorithm that is used in PoW with one important difference. The only variable parameter is \textit{TimeInSec} (validators local clock) and therefore slows down the hash rate to one attempt per second no matter what hardware is being used.
+\end{description}
+
+PPCoin is vulnerable to stake grinding attacks where a validator can influence parameters in order to have a higher probability to be reelected for the next block. This is because the data of the previous block is included in the PoS condition. \cite{ethereum_faq}
+
+\subsection{Byzantine Agreement Protocols}
+In Byzantine agreement protocols validators agree upon the next block by means of a multi-round voting process. Validators are randomly selected in order to propose the next block. Each validator has a voting power according to their stake in the system. In each round validators can commit to a block. If they agree to the proposed block and if the block receives a majority of votes, it is considered as valid. All messages that are used for proposing a new block or committing to a block are done handled by the gossip protocol. This means none of these messages are recorded on the blockchain.
+
+\subsubsection{Tendermint}
+The state machine shown in Figure \ref{tendermint_state_machine} illustrates how the round based consensus protocol of Tendermint \cite{tendermit_paper} works. A validator contributes to the consensus by signing votes for proposed blocks. Each round is split up in three steps: \textit{Propose}, \textit{Prevote} and \textit{Precommit}, followed by two special steps called \textit{Commit} and \textit{NewHeight}.
+
+\begin{figure}[H]
+	\begin{center}
+		\input{./graphics/tendermint_state_machine}
+	\end{center}
+	\caption{Tendermint State Machine \cite{tendermit_docs}}
+	\label{tendermint_state_machine}
+\end{figure}
+
+\begin{description}
+	\item[Propose] In every round a validator is nominated as a block proposer in round-robin fashion. The frequency of being selected depends on the validators stake. The higher the stake the higher the chances of being elected. The elected validator creates a block and broadcasts it as a proposal. All other validators listen for the broadcasted block.
+	
+	\item[Prevote] Every validator has to make a decision during this step. A validator can accept the block by broadcasting a signed \textit{Prevote} message. If a node has not received any proposal or an invalid block, it signs and broadcast a \textit{Nil Prevote}.
+	
+	\item[Precommit] In this step each node validates if it received more than \( \frac{2}{3} \) of the total \textit{Prevotes}. If this is the case the validator signs and broadcasts a \textit{Precommit} message. At the end of this step a note decides again if it received more than  \( \frac{2}{3} \) of \textit{Precommits}. Depending on this decision the validator either enters the \textit{Commit} step or starts a new round in the \textit{Propose} step with a slightly increased time period for each step. 
+	
+	\item[Commit]  A validator signs and broadcasts a \textit{Commit} message. As soon as a node has received the block and at least  \( \frac{2}{3} \) of the \textit{Commits} it considers the block \textit{} final and enters the \textit{NewHeight} step.
+	
+	\item[NewHeight] The purpose of this time window is to gather additional commits for the previously committed block. 
+\end{description}
+
+
+One might think that the \textit{Precommit} step is unnecessary but there are some more mechanism needed \cite{tendermit_docs} that take place within that step, which are not discussed within this paper. 
+
+
+\subsubsection{Algorand}
+Algorand's PoS protocol is similar to the protocol of Tendermint with significant improvements. 
+
+In Tendermint the right of proposing the next block is being passed in round-robin fashion \cite{tendermit_paper}. Algorand uses a mechanism based on Verifiable Random Functions that allows nodes to privately check whether they are part of the current round. After gossiping a message to the network these nodes are immediately replaced. This prevents DoS attacks on chosen validators after their identity is revealed. 
+
+Algorand addresses the scalability problem that exists in other protocols. It achieves scalability by randomly selecting a committee which is a small subgroup of representatives of all validators. Only the committee is eligible to run a certain step in the protocol which reduces the number of messages passed through the network. Algorand claims that the protocol is able to handle 125 times more transactions than Bitcoin does \cite{algorand_paper}. 
+
+
+
+\section{Challenges}
+There arise new difficulties and possible attacks with PoS consensus mechanisms. This section explains what mechanisms are needed to prevent nodes from double spending. Other difficulties such as the manipulation of the random election, DoS attacks as well as the difficulty from keeping validator online at all time are outlined.
+
+\subsection{Nothing at Stake (Double Spend)}\label{nothing-at-stake}
+
+In the case where a blockchain forks and multiple chains are competing with each other, a validator has two or more options where to add the next block. Unlike in PoW, there are no resources burned in the process of finding a random node in the network. This allows the validator to append a block on any of the competing chain. Therefore, it is in the validators incentive to build on top of every competing chain. This strategy assures that the suggested block will most likely be included in the chain which will be accepted by the network. 
+
+\begin{figure}[H]
+	\begin{center}
+		\input{./graphics/pos_competing_chains.tex}
+	\end{center}
+	\caption{Competing Chains in PoS \cite{ethereum_faq}}
+	\label{pos_competing_chains}
+\end{figure}
+
+If all validators act economically and append their block on every competing chain, the blockchain will never reach consensus, even if there are only honest validators. Figure \ref{pos_competing_chains} shows how the expected value \textit{EV} changes depending on the validators strategy. 
+
+The value of \textit{p} depends on the percentage of validating nodes that received this chain prior to any other chain of the same length. The fractional amount of the total stake that votes for a particular chain influences \textit{p} as well. For simplicity it is assumed that the block-reward and transaction fees add up to exactly one coin for each block.
+
+Unlike in PoW, where a mining node would need to split its hashing power in order to vote on multiple chains. This is due to the reason that the hash of the previous block is included in the PoW calculation. Therefore, a miner will always put all his mining power into the longest chain, which is the chain that will most likely be accepted by the network (see Figure \ref{pow_competing_chains}). 
+
+\begin{figure}[H]
+	\begin{center}
+		\input{./graphics/pow_competing_chains.tex}
+	\end{center}
+	\caption{Competing Chains in PoW \cite{ethereum_faq}}
+	\label{pow_competing_chains}
+\end{figure}
+
+In the context of PoW, the probability \textit{p} of a chain depends on the percentage of mining nodes that received this chain prior to the any other chain of the same length. The fraction of the total hashing power that is put into each chain influences the likelihood \textit{p} aswell. 
+Consequently, miners have to make a decision on what competing chain they want to continue if they have two or more competing chains of the same length. This results in a separation of the miners and therefore, \textit{p} has to add up to exactly 100 percent over all the competing chains of all the miners. 
+
+As previously described, rational validators in a PoS system append a block on every competing chain. Therefore, the sum of the amount of voting power from all competing chains can be more than 100 percent. This property is described in the following scenario and shown in Figure \ref{pos_staking_weights}. After block \textit{a} is added, two validators \textit{F} and \textit{G} append a block at the same time which results in a fork with two competing chains. Every validator wants to make sure that his/her block will be included in the finalized blockchain. Therefore, every following block is added on both chains. 
+
+With the assumption that validator \textit{F} has a staking power of 1\% and validator \textit{G} of 2\% and all the validators between block \textit{f} and \textit{y} make up for the total stake of 96\%. At the time of block \textit{y} the upper chain has a staking weight of 98\% and the lower chain of 97\%. The sum of the amount of voting power of both competing chains in this example is 1.96 which is clearly higher than 1.
+
+\begin{figure}[H]
+	\begin{center}
+		\input{./graphics/pos_staking_weights.tex}
+	\end{center}
+	\caption{Staking Weights in PoS \cite{ethereum_faq}}
+	\label{pos_staking_weights}
+\end{figure}
+
+A malicious user \textit{Z} can take advantage of such a situation and double spend his coins. A transaction that is included in block \textit{g} but not in \textit{f} can easily be reversed by appending a new block \textit{z} on only the subchain where block \textit{g} is not included. Therefore, after user \textit{Z} added block \textit{z}, the chain containing block \textit{f} and \textit{z} has a higher staking weight and will be accepted by the network as shown in Figure \ref{pos_double_spending}. In this example the malicious user has double spent his coins with only 2\% of the total stake.
+
+\begin{figure}[H]
+	\begin{center}
+		\input{./graphics/pos_double_spending.tex}
+	\end{center}
+	\caption{Double Spending in PoS \cite{ethereum_faq}}
+	\label{pos_double_spending}
+\end{figure}
+
+To ensure a secure implementation of PoS, a protocol has to implemented that allows validators to be punished for appending new blocks on multiple chains at the same height.
+
+\subsection{Grinding Attack}
+When validators are able to manipulate the random election process of the consensus algorithm, it creates the possibility of grinding attacks. 
+
+For example a poor design is when the election process depends on the previous block-hash. The node which is elected for adding a block can manipulate the block-hash by in- or excluding certain transactions which then results in different block-hashes. Hence, this node can grind through many different combinations and choose the one that reelects itself with a high likelihood for the next block.
+
+Therefore, the protocol must make sure that the parameters for the random election process cannot be modified at commitment time. This can be achieved by committing to a piece of information far in advance and is described in more detail in Section \ref{stake-transaction}.
+
+\subsection{DoS Attack}
+If the random election process is determined in a public manner, the elected validator is known ahead of time and the protocol is vulnerable to DoS attacks. Therefore, it is advantageous to hold elecetion process privately. 
+
+In a PoW protocol, this is done in a way that each validator tries to find a solution to a mathematical puzzle. This puzzle is different for every miner. A malicious user cannot predict which node solves this puzzle first. Thus, the elected node cannot become a victim of a DoS attack unless the malicious user attacks every node in the network.
+
+A similar level of unpredictability is desired for a PoS protocol.
+
+\subsection{Availability}
+Many different parties competing for the next block decreases the possibility of appending multiple consecutive blocks by a single validator. Hence, the network becomes more secure with every additional validator. There are PoS protocols, where the probability of adding the next block increases proportionally to the time that a validator has not been elected. Often this is referred to as coin aging and is described by the means of the PPCoin implementation in Section \ref{ppcoin}. 
+
+A protocol that includes coin age incentivizes validators for not being online until they reach a high or even the maximum possible coin age. Coin age is accumulated even if a node is offline. In such a scenario, a large fraction of the validator set would then be offline most of the time. Therefore, the actual number of competing nodes in the network is by no means the size of the validator set. A system becomes only more secure with additional validators if these nodes are online and compete for the next block at any time.
+
+A PoS protocol must incentivize validators to be online at any given time. 
+
+
+
+
+
+
+

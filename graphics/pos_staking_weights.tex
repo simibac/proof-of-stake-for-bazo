@@ -1,0 +1,35 @@
+
+
+\newcommand{\equal}{=\space}
+\begin{tikzpicture}
+	[block/.style={rectangle,draw=black, inner sep=0pt,minimum size=4mm},
+	appendingBlock/.style={rectangle,draw=black, inner sep=0pt,minimum size=4mm},
+	blockSequence/.style={font={\space\space ...\space\space}} ]
+	
+	% first chain EV=0.1
+	\node (a)[block] {a};
+	\node (b)[block, below right=of a,  label=270: added by F(p \equal 0.01)] {f};
+	\node (c)[block, above right=of a,  label=90: added by G(p \equal 0.02)] {g};
+	\node (d)[block,  right=of b] {h};
+	\node (e)[block,  right=of c] {h};
+	\node (f)[blockSequence,  right=of d] {};
+	\node (g)[blockSequence,  right=of e] {};
+	\node (h)[block,  right=of f,  label=0: p \equal0.97] {y};
+	\node (i)[block,  right=of g, label=0: p \equal0.98] {y};
+	\node (legend)[below =of g, align=left] {
+		p \equal 0.96
+	};
+	
+	
+	\draw[->] (-1, 0) -- (a);
+	\draw [->] (a.east) -- (b.west);    
+	\draw [->] (a.east) -- (c.west);    
+	\draw [->] (c.east) -- (e.west);    
+	\draw [->] (b.east) -- (d.west);    
+	\draw [->] (d.east) -- (f.west);    
+	\draw [->] (e.east) -- (g.west);    
+	\draw [->] (g.east) -- (i.west);    
+	\draw [->, ] (f.east) -- (h.west);
+	\draw [decorate,decoration={brace,amplitude=0.5cm,mirror}] (e.south west) -- (i.south east);
+	\draw [decorate,decoration={brace,amplitude=0.5cm}] (d.north west) -- (h.north east);
+\end{tikzpicture}

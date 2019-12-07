@@ -1,0 +1,156 @@
+\appendix
+
+\chapter{Installation Guidelines}
+
+\lstset{
+	frame = single, 
+	language=bash, 
+	framexleftmargin=5pt,
+	framextopmargin=5pt,
+	framexbottommargin=5pt,
+}
+
+Most of the installation guidlines are taken from the previous system installation instructions \cite{bazo_paper}. There are new parameters added to the transaction that updates the system config parameters \ref{usage-configtx}. Further, the usage of the new transaction type for joining/leaving the validator set is explained in Section \ref{usage-staketx} as well as the system keeps track of previously used seeds in case of a rollback \ref{seed-storage}.
+
+\section{Validator Application}
+In order to start the miner application, Go (version 1.8.3 or higher) needs to be installed. The newest version can always be fetched from the following website:
+
+\begin{lstlisting}
+https://golang.org/dl/
+\end{lstlisting}
+
+After downloading Go, the environment variables GOROOT and GOPATH need to be set to the corresponding paths.
+To get the miner application and all necessary libraries, the following command needs to be executed on the command line:
+\begin{lstlisting}[language=bash]
+$ go get github.com/lisgie/bazo_miner
+\end{lstlisting}
+
+Upon successfully downloading the miner application and all additional libraries, the miner application can be started with the following command:
+\begin{lstlisting}
+$ bazo_miner <database_file.db> <listening_port>
+\end{lstlisting}
+
+The application consists of two arguments: \textit{database\_file.db} points to the storage location of the disk-based key/value store. \textit{listening\_port} indicates the port the application listens on for incoming miner and client connections.
+
+\section{Client Application}
+To download the client application, execute the following command on the command line:
+
+\begin{lstlisting}
+$ go get github.com/lisgie/bazo_client
+\end{lstlisting}
+
+The Bazo client lets a user issue transactions by supplying the necessary arguments for each transaction type on the command line. For a transaction to be successfully validated, it needs to be signed with a private key (this is true for both root and regular user accounts). The keys are stored in regular files and the filename is supplied as an argument.
+
+
+\subsection{Key Handling}
+All signatures in Bazo are based on the elliptic curve digital signature algorithm (ECDSA), a digital signature algorithm based on elliptic curve cryptography. An ECDSA key pair consists of a public key and a private key. The private key is used to sign a transaction and the public key is used for signature verification. Listing \ref{key-handling} shows an example of a key file:
+
+\begin{lstlisting}[caption={Bazo Key File},label={key-handling}]
+4dc418348a5c77263a70544b49ed07d78714e4df0efe277f4df20cc0a0583717
+cec17514ae732cd02e0aff7f6d5125d202fc650b912c489da6ddea0fa153b904 
+806372a5e4766bd75e9c234280f4879832629f3030b1ebc2cfe12d3b50d6aeac
+\end{lstlisting}
+
+The first two lines make up the public key, the last line is the private key. For transferring funds, only the public key is necessary, the third line can thus be omitted when creating a transaction of this type.
+
+\subsection{Account Transaction}
+
+An account transaction is launched with the following command: 
+
+\begin{lstlisting}
+$ bazo_client accTx <header> <fee> <privKey> <keyOutput>
+\end{lstlisting}
+
+The meaning of the arguments is as follows:
+
+\begin{description}
+	\item[header] Value = 1 creates a new root account, value = 2 removes a root account.
+	\item[fee] The fee to be paid for the transaction. Must be larger or equal than the \emph{Minimum Fee} system parameter.
+	\item[privKey] Points to the key file of a root account (the transaction is invalid if it is signed by a non-root account).
+	\item[keyOutput] File location that stores the keypair belonging to the newly created Bazo account.
+\end{description}
+
+\subsection{Transferring Funds Transaction}
+A transferring funds transaction is launched with the following command:
+
+\begin{lstlisting}
+$ bazo_client fundsTx <header> <amount> <fee> <txCnt>
+<fromHash> <toHash> <privKey>
+\end{lstlisting}
+
+The meaning of the arguments is as follows:
+
+\begin{description}
+	\item[header] Reserved for future use.
+	\item[amount] Amount to be sent from the sender to the receiver account.
+	\item[fee] The fee to be paid for the transaction. Must be larger or equal than the \emph{Minimum Fee} system parameter.
+	\item[txCnt] This integer parameter is linked to the sender account and needs to be increased with every newly created funds transfer transaction (starting at 0).
+	\item[fromHash] The key file of the sender account (only public key needed).
+	\item[toHash] The key file of the receiver account (only public key needed).
+	\item[privKey] Key file of the sender account (will most likely point to the same location as \emph{\textless fromHash\textgreater}, private key needed).
+\end{description}
+
+\subsection{Changing System Parameters Transaction}\label{usage-configtx}
+
+A system parameter change transaction is launched with the following command:
+
+\begin{lstlisting}
+$ bazo_client configTx <header> <id> <payload> <fee> <txCnt> 
+<privKey>
+\end{lstlisting}
+
+The meaning of the arguments is as follows:
+
+\begin{description}
+	\item[header] Reserved for future use.
+	\item[id] The ID of the parameter to change:
+	\begin{itemize}
+		\item ID = 1: Block Size [bytes]
+		\item ID = 2: Difficulty Interval [\#blocks]
+		\item ID = 3: Minimum Fee [Bazo coins]
+		\item ID = 4: Block Interval [seconds]
+		\item ID = 5: Block Reward [Bazo coins]
+		\item ID = 6: Staking Minimum [Bazo coins]
+		\item ID = 7: Minimum Waiting Time [\#blocks]
+		\item ID = 8: Accepted Time Difference [seconds]
+		\item ID = 9: Slashing Window Size [\#blocks]
+		\item ID = 10 Slashing Rewards [Bazo coins]
+	\end{itemize}
+	\item[payload] The new value to be set.
+	\item[fee] The fee to be paid for the transaction. Must be larger or equal than the \emph{Minimum Fee} system parameter.
+	\item[txCnt] The transaction counter. Won't be checked, this is just to force a new hash for the same transaction.
+	\item[privKey] Points to the key file of a root account (regular users are not allowed).
+\end{description}
+
+
+
+\subsection{Stake Transaction}\label{usage-staketx}
+
+A transaction of this type can be initiated with the following command:
+
+\begin{lstlisting}
+$ bazo_client stakeTx <fee> <isStaking> <account> <privKey>
+\end{lstlisting}
+
+\begin{description}
+	\item[fee] The fee to be paid for the transaction. Must be larger or equal than the minimum fee set as the system parameter.
+	\item[isStaking] Has to be set to 1 if a node wants to join the validator set or set to 0 if a validator leaves the validator set.
+	\item[account] The key file of the account that wants to join/leave the validator set (only public key needed).
+	\item[privKey] Key file of the sender account (will most likely point to the same location as \emph{\textless account\textgreater}, private key needed). 
+\end{description}
+
+\subsection{Seed Storage File}\label{seed-storage}
+In case of a rollback a validator must be able to restore previous seeds. Therefore, a file called \emph{seeds.json} stores all the previously used seeds. After a rollback a validator reads the hashed seed that is stored in his/her account in the systems state. \emph{seeds.json} maps all the hashed seeds to the actual seeds. 
+
+\subsection{Settings File}\label{settings-storage}
+Due to the implementation decisions from the previous developer that the name of the key files can be chosen freely, a \emph{settings.json} file was introduce. Its only purpose is to keep track of the file names.
+
+\chapter{Contents of the CD}
+\begin{itemize}
+	\item Miner Application Source Code
+	\item Client Command Line Application Source Code
+	\item The \LaTeX\ Source Code
+	\item Final Thesis (.pdf)
+	\item Intermediate Presentation
+	\item Related Papers
+\end{itemize}

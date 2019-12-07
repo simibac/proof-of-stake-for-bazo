@@ -1,0 +1,9 @@
+\chapter{Future Work}
+
+The consensus mechanism employed in Bazo is unique and does not exist in any other blockchain. Thus, the security of the newly designed protocol must be thoroughly tested. 
+
+Although the random validator election process works similar as in PPCoin's protocol, Bazo claims to be less vulnerable towards stake grinding attacks. In a future project the Bazo blockchain should be tested if this claim is justified by attempting to perform such an attack. 
+
+Furthermore, a mathematically underpinned analysis is needed in order to define the system parameters securely. For now, the minimum-waiting-time parameter (see Section \ref{system-parameters}) can only be adjusted with a ConfigTx signed by a root account. However, this parameter is of great importance in regard to security (as shown in Section \ref{stake-grinding-attacks}). This poses a risk of a security flaw if the responsible root accounts do not adjust this parameter when topology of the validator set changes. A dynamic analysis of the stake distribution among all validators is desired, which also updates the parameter for the minimum-waiting-time automatically within the system. 
+
+The same applies for the slashing-window-size and the accepted-time-difference. For the accepted-time-difference the disparity of the clock speeds on different machines running the Bazo protocol have to be investigated.

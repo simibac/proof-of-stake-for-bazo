@@ -1,0 +1,31 @@
+
+
+\newcommand{\equal}{=\space}
+\begin{tikzpicture}
+	[block/.style={rectangle,draw=black, inner sep=0pt,minimum size=4mm},
+	appendingBlock/.style={rectangle,draw=black, inner sep=0pt,minimum size=4mm},
+	blockSequence/.style={font={\space\space ...\space\space}} ]
+	
+	% first chain EV=0.1
+	\node (a)[block] {a};
+	\node (b)[block, below right=of a] {f};
+	\node (c)[block, above right=of a] {g};
+	\node (d)[block,  right=of b] {h};
+	\node (e)[block,  right=of c] {h};
+	\node (f)[blockSequence,  right=of d] {};
+	\node (g)[blockSequence,  right=of e] {};
+	\node (h)[block,  right=of f] {y};
+	\node (i)[block,  right=of g, label=0: p \equal0.99] {y};
+	\node (z)[block,  dotted, right=of h, label=0: p \equal1] {z};
+	
+	\draw[->] (-1, 0) -- (a);
+	\draw [->] (a.east) -- (b.west);    
+	\draw [->] (a.east) -- (c.west);    
+	\draw [->] (c.east) -- (e.west);    
+	\draw [->] (b.east) -- (d.west);    
+	\draw [->] (d.east) -- (f.west);    
+	\draw [->] (e.east) -- (g.west);    
+	\draw [->] (g.east) -- (i.west);    
+	\draw [->] (f.east) -- (h.west);  
+	\draw [->, dotted] (h.east) -- (z.west);   
+\end{tikzpicture}

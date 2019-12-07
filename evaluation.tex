@@ -1,0 +1,91 @@
+\chapter{Evaluation}
+Security considerations directly influence the design of the new consensus mechanism and a range of attacks are mitigated by the employed counteractions. This chapter focuses on the vulnerability of the newly designed protocol as well as it evaluates the efficiency compared to PoW algorithms. 
+
+\section{Attacks}
+
+This chapter focuses on the attack scenarios and installed countermeasures in order to mitigate them. It elaborates on Denial-of-Service (DoS) and stake grinding attacks.
+
+\subsection{DoS Attack}
+The designed protocol offers the same degree of security towards DoS attacks. The election process is done in the same private manner as in PoW consensus algorithms. After a node has successfully added a new block and therefore revealed its private seed, a new seed is created and the hash of this seed is included in the new block. An attacker cannot predict what the value of the new seed is. Therefore, the implemented system is not more vulnerable towards DoS attacks than it was with a PoW algorithm.
+
+
+\subsection{Stake Grinding Attacks}\label{stake-grinding-attacks}
+This section evaluates how a stake grinding attack becomes infeasible due to the properties of the PoS condition from Section \ref{pos-condition}. It elaborates on the parameters that are used in the PoS condition and highlights their importance to prevent stake grinding attacks.
+
+Condition \ref{pos-condition-formula-without-list-without-block-height} could be a potential PoS condition. 
+
+\begin{equation} 
+\label{pos-condition-formula-without-list-without-block-height}
+\frac{SHA{\text -}256(Seed_{PrevBlock} \cdot Seed_{Local} \cdot TimeInSeconds)}{Coins} \leq Target
+\end{equation}
+
+However, a vicious user could take advantage of the security flaw of this condition and perform a stake grinding attack. Such an attack can occur as follows: This malicious user controls two addresses A and B. Both addresses must be in possession of the minimum amount of coins that is required to join the validator set. For both accounts he/she creates a StakeTx in order to join the validator set. For account A the attacker generates a random $ Seed_{Local} $ as usual. For address B he/she submits the hash of a manipulated $ Seed_{Local} $. By brute forcing the fraud is able to come up with a $ Seed_{Local} $ that fulfills Condition \ref{pos-condition-formula-without-list-without-block-height} with $ TimeInSeconds $ equal to 0. 
+
+This shows the possibility with a PoW approach to immediately be reelected after account A has successfully added a block to the blockchain.
+
+\subsubsection{Block Height}\label{stake-grinding-without-the-list-of-the-previous-seeds}
+Therefore, the Condition \ref{pos-condition-formula-without-list-without-block-height} is extended with the $ BlockHeight $ parameter as shown in Condition \ref{pos-condition-formula-without-the-list-of-previous-seeds}.
+
+\begin{equation} 
+\label{pos-condition-formula-without-the-list-of-previous-seeds}
+\frac{SHA{\text -}256(Seed_{PrevBlock} \cdot Seed_{Local} \cdot BlockHeight \cdot TimeInSeconds)}{Coins} \leq Target
+\end{equation}
+
+A node cannot foresee at what block height it is elected to append the next block. Therefore, if the height of the block is included in the PoS condition it becomes computationally more challenging for a malicious user to perform a stake grinding attack. 
+
+Such an attack would look as follows. A fraud assumes that he/she is elected to append a block within the next 100 blocks. Therefore, he/she creates 100 addresses that all possess the minimum amount that is required to join the validator set. For each address he/she submits a manipulated $ Seed_{Local} $ when joining the validator set. Each $ Seed_{Local} $ of the 100 addresses is chosen such that it reelects the vicious user under consideration of an estimated $ BlockHeight $. 
+
+Therefore, with enough computational power it is still possible to perform a stake grinding attack. 
+
+\subsubsection{List of Previous Seeds}
+Hence, the $ Seed_{PrevBlock} $ is extended to a list of the previous blocks ($ [Seed_{PrevBlocks}] $). If multiple previous seeds are part of the PoS condition, immutable information from other validators are included in the PoS condition. 
+
+\begin{equation} 
+\label{pos-condition-formula-complete}
+\frac{SHA{\text -}256([Seed_{PrevBlocks}] \cdot Seed_{Local} \cdot BlockHeight \cdot TimeInSeconds)}{Coins} \leq Target
+\end{equation}
+
+This makes a stake grinding attack impossible unless the same user has submitted all the considered previous seeds. Therefore, the number of previous seeds must be chosen large enough to prevent such a scenario. The order of previous seeds also matters which makes such an attack highly unlikely. Appending blocks in a controlled order requires a large amount of coins. A fraud would need to be capable of skipping an opportunity to create a block in order to establish the right block sequence. 
+
+Therefore, the number of coins needed for such an attack can be controlled by the number of previous seeds in the PoS condition. This number is a system parameter and can be changed by a root account with a ConfigTx. It should be chosen such that the attacker would need to possess at least 51\% of the staking coins. With more than 51\% of the coins, an attacker could also perform a 51\% attack which is simpler to do, since it does not require the computational resources.
+
+
+\subsubsection{Without a Minimum Waiting Time}\label{stake-grinding-without-a-minimum-waiting-time}
+The minimum waiting time is the number of blocks that need to be passed before a node is part of the validator set after broadcasting the StakeTx (Setting 1). It is also the time that a node cannot validate a block after it has previously added a block (Setting 2).
+
+
+\begin{description}
+	\item[Setting 1] The vicious node controls two addresses A and B. A is part of the validating set and B possesses the required minimum amount of coins to join the validator set but is not part of it yet. As soon as A is elected to add a block, B broadcasts a StakeTx with a manipulated seed such that the PoS condition for the next block is immediately fulfilled ($ TimeInSeconds $ equals 0). This is only possible since the attacker knows all the parameters for the PoS condition for the next block. A includes this transaction in its block and B is immediately elected for the next block. The same setting could be repeated and a single party could take control over the entire blockchain.
+	\item[Setting 2] Without a minimum waiting time, a malicious node can easily reelect itself. This attack would look like the following. When the attacker is elected for adding a block it finds a manipulated seed by brute forcing such that it fulfills the PoS condition immediately for the next block ($ TimeInSeconds $ equals 0). This is possible since the fraud knows all the parameters for the PoS condition for the next block. The manipulated seed is then included the block. As a result every node in the network updates the hashed seed in the attacker's account. Since the seed is manipulated the attacker meets the PoS condition immediately and he/she can repeat the same procedure.
+\end{description}
+
+In the case where the minimum waiting time is set to 10 blocks, a malicious user would have to be successfully elected ten times in a row before he can execute such an attack. In a established system where the staking amount is distributed among many validators, such an attack becomes infeasible.
+Therefore, the system parameter for the minimum waiting time must be selected accordingly that such an attack becomes unfeasible in the current stake distribution. One also has to consider that a validator is blocked for the number of blocks that defines the minimum waiting time after appending successfully a block. 
+
+
+\section{Environment}
+The implemented consensus-algorithm throttles the hashing power of each validator to exactly 1H/s. Compared to specialized Bitcoin mining hardware such as the Antminer S9 which delivers upto 14TH/s \cite{antminer-s9}, the expended resources are negligible and can be carried out by low performance desktop computers.
+
+
+\section{Risk of Centralization}
+
+This section evaluates the risks of centralization and compares it to PoW implementations. It also discusses the threat in consensus mechanisms where rich nodes get richer.
+
+\subsection{Mining/Validating Pools}
+Since the amount of resources used in the implemented consensus-algorithm is insignificant, there is no need for a constant revenue stream for a validator. Therefore, the formation of validating pools as it occurs with mining pools is less applicable.
+
+\subsection{Cloud Mining/Validating}
+A validator does not gain a competitive advantage over other validators by buying specialized hardware. Thus, there is no need for centralized cloud service providers to offer hardware rentals which reduces the risk of centralization.
+
+\subsection{The Rich Get Richer}
+There are concerns about a threat of centralization in form of "the rich get richer". One can argue that a node that owns a large fraction of the tokens will generate more revenue than others and will eventually possess more than 51\%. 
+
+However, this argument can also be raised in a PoW system. Every time a miner is able to produce a new block, he/she can invest the earned block reward in new mining hardware. The node that can initially afford the greatest mining infrastructure would also be able to buy new hardware more frequently and eventually become the richest node in the network. Such a node profits from economies of scale and can benefit from higher margins on each block compared to smaller miners. This offers the possibility of buying new hardware even more regularly. 
+
+As explained previously in this thesis the block reward and transaction costs in PoS can be lowered drastically compared to PoW due to the lack of burned resources. Thus, it would take a node much longer to possess 51\% of all the tokens. 
+
+As a conclusion one can argue that such a form of centralization is possible in both types of consensus mechanism. It requires more effort in PoW since one would constantly have to buy new mining hardware and infrastructure. In PoS it takes significantly longer since only a very small portion of the total amount of coins is generated with each new block. 
+
+As soon as people start realizing that there is a potential risk of centralization in a distributed system the interest in such a system decreases. As a result the value of the tokens declines with it. In PoS your entire stake is at risk since your investment is in the token itself, whereas in PoW your investment is in form of mining hardware. 
+
+If an attacker successfully performs a 51\% attack, a minier can move its mining gear on to another blockchain. In PoS it is more difficult to withdraw the investment since the attacker needs to sell all his/her tokens. The market price for the associated cryptocurrency would drop immediately due to the excessive supply and the attacker is probably not able to sell above the price that he/she acquired the tokens. As a result, in PoS systems there is a higher risk of losing a large portion of the investment when attempting a 51\% attack and might be more expensive than in PoW. 

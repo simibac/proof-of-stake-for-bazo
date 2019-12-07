@@ -1,0 +1,50 @@
+\chapter{Introduction}
+Proof-of-Stake (PoS) is a class of consensus algorithm which provides significant improvements in terms of electricity consumption and security towards the currently most dominant consensus mechanism called Proof-of-Work (PoW).
+
+A PoS consensus algorithm is in general best described as follows: A validator is a node in the network that validates transactions and adds them to the blockchain. Any node in the system can become a validator by depositing tokens of the associated cryptocurrency. These tokens cannot be spent as long as the validator is part of the validator set. This deposit is used to punish malicious nodes. Validators are elected by the network proportionally to the deposited funds for appending the next block. The right to add the next block is made in a decentralized selection procedure depending on the number of tokens deposited by each validator.
+
+The category of PoS consensus mechanisms consists of many different algorithms and protocols, which each solves the tasks of random validator election, reward system and other PoS challenges differently. There are two major types of algorithms for PoS protocols: chain-based and Byzantine agreement protocols, which will be discussed in more detail in Section \ref{different-types-of-pos}.
+
+\section{Motivation}
+PoS addresses several risks and efficiency improvements over PoW systems which are discussed in this Section. 
+
+\subsection{Environmental Harm}
+By the time of writing this thesis, Digiconomist \cite{digiconomist} reports that the Bitcoin blockchain consumes more than 36 TWh annually. For comparison, this is more than the entire nation of Bulgaria consumes every year and they are ranked 60th position in the global energy consumption rating. In other terms the Bitcoin blockchain uses as much electricity as more than 3 million households together. Thus, in order to secure the Bitcoin blockchain the global mining costs amount to over 5 million USD every day. 
+
+There is no need for an extensive computation task in a distributed system that uses PoS as a consensus mechanism in order to have a similar level of security. With new emerging blockchains almost every day, an environmentally friendly and sustainable consensus mechanism that replaces PoW is needed. 
+
+\subsection{Risk of Centralization in Form of Mining Pools}
+The chances of adding a block for an individual minier in PoW is extremely low. Therefore, miners can join so-called mining pools where their computational power is collaboratively deployed. The block reward and transaction fees are split among the members of the mining pool proportionally to the provided computational effort. This guarantees a constant revenue stream. 
+
+By the time of writing this thesis, the largest mining pools (BTC.com, BTC.TOP, AntPool) represent more than 50\% of the total hashing power \cite{bitcoin_mining_pools_2}. If these mining pools joined together, the Bitcoin blockchain would be vulnerable to a 51\% attack where this mining pool could always provide a longer competing chain than the currently accepted one \cite{51_attack}. Therefore, the Bitcoin blockchain would be controlled by a single centralized entity. 
+
+The need for a constant revenue stream is not required in a PoS system since the validator does not have to be compensated for burned resources. Therefore, the formation of large validator sets is less likely.
+
+\subsection{Risk of Centralization in Form of Cloud Mining}
+Cloud-mining allows people to mine cryptocurrencies without owning mining hardware \cite{bitcoin_cloud_mining}. Companies providing cloud-mining services profit from economies of scale such as special deals on hardware orders and lower maintenance costs. Therefore, these companies gain a economical advantage over individual miners and may force them out of the market.
+
+Since no specialized hardware is needed for a PoS system, centralized cloud companies do not provide any significant advantage.
+
+\subsection{Entry Barrier}
+
+ A miner in a PoW system with specialized hardware gains an edge over the competition, whereas in a PoS system a validator can only generate revenue proportionally to his/her deposits in the system. The entry barrier of becoming a validator in a PoS system is therefore significantly lower than becoming a miner in a PoW system.
+
+
+\subsection{Discrepancy between Miners and Non-Miners}
+Another advantage of PoS protocols is that the discrepancy between mining and non-mining nodes can be considerably lowered. Practically any machine with enough storage and bandwidth can be part of the validator set. Therefore, the community is less split up as it occurs in PoW implementations.
+
+\subsection{51\% Attack}
+In the initial phase of a new blockchain the number of validators/miners is limited. This poses a great risk of a 51\% attack. A malicious user can easily buy mining hardware such that he/she possesses at least 51\% of the total hashing power of the network. This user can produce a longer competing chain than the rest of the network. The system always follows the longest competing chain and therefore, the malicious user has control of the blockchain. 
+
+The developers of a PoS system can hold back 51\% of the coins until the network is established in order to prevent such an attack by an outsider.
+
+\subsection{Transaction Fees}
+Transaction fees prevent a blockchain from being spammed but also compensate the miners for their computational effort and electricity costs. No resources are burned in a PoS consensus mechanism and therefore, the transaction fees can be significantly lowered. 
+
+\section{Description of Work}
+This thesis covers the design of a PoS mechanism for the Bazo cryptocurrency that allows to reduce the energy consumption for mining. Furthermore, it increases security as mining without many miners poses a great risk of a 51\% attack. Currently, the Bazo cryptocurrency uses a SHA3 partial hash collision as a Proof-of-Work (PoW) consensus mechanism. The main reason to use this in a first implementation is its simplicity, because a SHA3 partial hash collision requires only a few lines of code. Since it is difficult to implement a fully decentralized PoS, delegated PoS (DPoS) or a PoS/PoW scheme have to be considered.
+
+The work of this Bachelor's Thesis is highly explorative, technical, and prototype-driven in finding the right optimizations for the PoS mechanism. At the same time, this requires at the same time a clear, detailed, and technically sound documentation of optimization steps performed, including the protocol design itself, a detailed reasoning of those steps selected, and outlining the scientific value of those mechanisms under study.
+
+\section{Thesis Outline}
+This thesis is structured in five Sections. Section 1 focuses on the motivation of a PoS protocol and its advantages. Chapter 2 familiarizes the reader with current PoS implementations and explains the difficulties behind such a protocol. Section 3 concentrates with the design and the implementation of the new consensus mechanism for the Bazo cryptocurrency, based on the given requirements. An evaluation of the PoS consensus mechanism is conducted in Chapter 4, which is followed by Chapter 5 about future work. A summary and conclusions are drawn in Chapter 6.

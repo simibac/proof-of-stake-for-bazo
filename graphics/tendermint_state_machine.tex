@@ -1,0 +1,71 @@
+
+
+\newcommand{\equal}{=\space}
+\begin{tikzpicture}
+	[
+	condition/.style={diamond,draw=black, aspect=2},
+	action/.style={rectangle,draw=black,inner sep = 8pt,  text centered, align=center},
+	newheight/.style={circle,draw=black},
+  	bracenode/.style={midway, right=20pt, rotate=90, anchor=north}
+	]
+
+
+
+\node (elected)[condition] {elected as proposer?};
+\node (new-height)[newheight, left=3.5cm of elected] {new height};
+
+\node (propose)[action, below right=1cm and 0cm of elected] {propose};
+\node (wait)[action, below left=1cm and 0cm of elected] {wait};
+
+\node (valid-block)[condition, below= 2cm of elected] {block valid?};
+
+\node (prevote-block)[action, below right=1cm and 0cm of valid-block] {prevote block};
+\node (prevote-nil)[action, below left=1cm and 0cm of valid-block] {prevote nil};
+
+\node (enough-prevotes)[condition, below= 2cm of valid-block] {2/3 prevotes?};
+
+\node (precommit-block)[action, below right=1cm and 0cm of enough-prevotes] {precommit\\block};
+\node (precommit-nil)[action, below left=1cm and 0cm of enough-prevotes] {precommit\\nil};
+
+\node (enough-precommit)[condition, below= 2.5cm of enough-prevotes] {2/3 precommits?};
+
+\node (commit)[action, below=7cm of new-height] {commit};
+\node (newround)[action, left= of prevote-nil] {new round};
+
+
+
+
+
+\draw[->] (elected.south) -| (wait.north) node[midway, left, above] {No};
+\draw[->] (elected.south) -| (propose.north) node[midway, right, above] {Yes};
+
+\draw[->] (wait.south) |- (valid-block.north);
+\draw[->] (propose.south) |- (valid-block.north);
+
+\draw[->] (valid-block.south) -| (prevote-nil.north) node[midway, left, above] {No};
+\draw[->] (valid-block.south) -| (prevote-block.north) node[midway, right, above] {Yes};
+
+\draw[->] (prevote-block.south) |- (enough-prevotes.north);
+\draw[->] (prevote-nil.south) |- (enough-prevotes.north);
+
+\draw[->] (enough-prevotes.south) -| (precommit-nil.north) node[midway, left, above] {No};
+\draw[->] (enough-prevotes.south) -| (precommit-block.north) node[midway, right, above] {Yes};
+
+\draw[->] (precommit-block.south) |- (enough-precommit.north);
+\draw[->] (precommit-nil.south) |- (enough-precommit.north);
+
+\draw[->] (enough-precommit.west) -| (newround.south) node[midway, below] {No};
+\draw[->] (enough-precommit.south) -| (commit.south) node[midway, right, below] {Yes};
+
+\draw[->] (newround.north) |- (elected.west);
+\draw[->] (commit.north) -| (new-height.south);
+
+\draw [->, dotted] (new-height.north) |- (elected.north);
+
+\draw [decorate,decoration={brace,amplitude=0.5cm}] (elected.north) ++(4.5cm,0) coordinate (s) -- (valid-block.north -| s)  node [bracenode] {propose step};
+
+\draw [decorate,decoration={brace,amplitude=0.5cm}] (valid-block.north) ++(4.5cm,-1mm) coordinate (s) -- (enough-prevotes.north -| s)  node [bracenode] {prevote step};
+
+\draw [decorate,decoration={brace,amplitude=0.5cm}] (enough-prevotes.north) ++(4.5cm,-1mm) coordinate (s) -- (enough-precommit.south -| s)  node [bracenode] {precommit step};
+
+\end{tikzpicture}

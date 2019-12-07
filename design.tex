@@ -1,0 +1,113 @@
+\chapter{Design and Implementation}
+This chapter covers the detailed description of the protocol design and how the existing Bazo blockchain is revised and extended.
+
+A chain-based protocol was developed for simplicity reasons. This type of protocol works similar to a PoW consensus mechanism with some key differences. It can also be referred to a throttled PoW algorithm since a validator is limited to exactly 1h/s (hash per second) no matter how powerful his/her machine is. It is a semi-synchronous system, which means that every node has its own local time running. If a node attempts to speed up his hashing power, the system detects the malicious node and the suggested blocks are rejected. 
+
+The protocol also chooses validators proportionally to the number of coins that each validator owns. Furthermore, it uses immutable random strings (seeds) at every block height in order to determine the next eligible validator. The detailed explanation of the election process is found in Section \ref{pos-condition}. 
+
+One of the advantages of the newly designed protocol is that a validator is always elected unless all validators are offline at the same time. Other PoS-protocols must implement a fall-back mechanism that deals with a deadlock, which occurs if all members of a chosen subset of validators are offline.
+
+\section{Transactions}
+Transactions are used to change the state of the accounts in the network. There are three transaction types already existing in the network (account creation, transferring funds and adjusting system parameters \cite{bazo_paper}). This section covers how the transaction types of changing system parameters (Section \ref{system-parameters}) and transferring funds (Section \ref{funds-transaction}) are updated as well as a new type of transaction for joining/leaving the validator set (Section \ref{stake-transaction}) is introduced. 
+
+\subsection{Stake Transaction (StakeTx)}\label{stake-transaction}
+A node in the active validator set confirms transactions proportionally to their stake in form of blocks of transactions. This new type of transaction allows a node to join or leave the validator set.
+
+The type of transaction consists of the following parameters:
+
+\begin{description}
+	\item[Fee] The fee payment is an incentive for the validator to include the transaction in the next block. The higher the amount of the fee, the more likely the transaction will be included in the next block. As in a traditional PoW based protocol, the validator that appends the next block will be rewarded with the transaction fees of all the transactions within the appended block. The amount of the fees can be drastically lowered compared to a PoW system since a validator does not have to be compensated for electricity costs. A small amount still has to be paid for every transaction in order to prevent to blockchain from being spammed.    
+	
+	\item[Is Staking] This boolean states whether the node wants to join or leave the set of validators.
+	
+	\item[Account] The hash of the public key of the issuer.
+		
+	\item[Hashed Seed] When a node wants to join the set of validators it must create a seed which is a random 32 bytes long string. By submitting the hash of this seed, the node commits to this seed without actually revealing it and it cannot change the seed in a later step. The same seed will be used in the PoS condition which is described in more detail in Section \ref{pos-condition}.
+	
+	\item[Signature] The signature serves the purpose of authentication. The node digitally signs the transaction with its private key.
+\end{description}
+
+A transaction of this type is accepted by the network if the issuer fulfills the minimum staking amount that is needed to become a validator. This minimum amount is a system parameter and described in more detail in Section \ref{system-parameters}.
+Staking transactions are referred to as StakeTx for the rest of the thesis.
+
+
+\subsection{System Parameters (ConfigTx)}\label{system-parameters}
+The idea behind this type of transaction is that the system parameters can be adjusted without the need of a hard fork. The transaction must be signed by a root account in order to be accepted. The existing configuration transaction is extended by the following parameters. 
+
+\begin{description}
+	\item[Minimum Staking Amount] This is the minimum amount of coins that a potential validator must possess. A node cannot join the set of validators unless it fulfills this requirement. As long as a node is part of the validator set its balance must never fall below the minimum.
+	\item[Minimum Waiting Time] This is the minimum number of blocks that a validator must initially wait for when joining the validator set. After appending a block to the blockchain a validator must also wait the same number of blocks before another one can be added. The reason for waiting a certain nuber of blocks is the prevention of a stake grinding attack. How such an attack would look like is described in Section \ref{stake-grinding-without-a-minimum-waiting-time}.
+	\item[Accepted Time Difference] An important characteristic of a semi-synchronous system is the different clock speed in every node in the network. This parameter defines the acceptable time difference. A malicious validator that speeds up his/her clock interval should not be able to append a block to the blockchain. 
+	\item[Slashing Window Size] As described in Section \ref{nothing-at-stake} validators must be punished when adding blocks on two competing chains. Otherwise the network will never reach consensus and it offers the possibility for double spending attacks. The slashing window size forces validators to commit to one of the competing chains after a fork. If a validator votes on two different chains within a span of a certain block height he/she will be punished. 
+	\item[Slashing Reward] This parameter refers to the amount of coins that a validator receives for providing a correct slashing proof. This incentivizes validators to check if other validators have built on top of multiple competing chains within the slashing window. 
+\end{description}
+
+\subsection{Funds Transaction (FundsTx)}\label{funds-transaction}
+This type of transaction is used to transfer funds from one account to another. The validation process of this transaction is slightly modified. The minimum account balance that an active validator must hold is increased to the corresponding system parameter. Therefore, any transaction from an active validator node will be rejected if the balance of the node is below the minimum staking amount after the transaction.
+
+\section{Account}
+The Bazo blockchain is an account-based model which means that the union of all the accounts make up the state of the network. Besides the three existing parameters - address, balance and and transaction count - three additional parameters are introduced:
+
+\begin{description}
+	\item[Is Staking] This boolean describes whether the account is currently part of the active validator set or not.
+	\item[Hashed Seed] The hashed seed is initially set to 0. As soon as a node joins the set of validators it must commit to a seed by publishing the hash of the seed. This parameter is set as soon as the corresponding account has successfully submitted a StakeTx to the blockchain.
+	\item[Staking Block Height] The system registers the block height at which an account joined the set of validators. This parameter is needed for the slashing condition which is described in more detail in Section \ref{validation}.
+\end{description}
+
+\section{Block}
+The following parameters are updated from the existing protocol or added to the block parameters:
+
+\begin{description}
+	\item[Number of StakeTx] Due to the newly introduced StakeTx this parameter corresponds to the number of StakeTxs that are included in the block.
+	\item[StakeTx Data] The hashes of all StakeTxs that are included in this block in sequential order.
+	\item[Time in Seconds (updated Nonce)] The meaning of the nonce in the updated protocol bears the number of seconds that a validator needs in order to fulfill the PoS condition (Section \ref{pos-condition}).
+	\item[Seed] The validator must publish the seed that it previously committed to when joining the set of validators.
+	\item[HashedSeed] This parameter stores the most recently submitted hash of the seed which a validator has committed to. This parameter is set when a validator joins the validator set (StakeTx). It is also updated after a node successfully added a new block. To stay part of the validator set the node creates a new seed and publishes the hash of the seed. This is necessary since the previously submitted seed will be published as part of newly added block and therefore, the PoS election for this node would no longer occur privately. 
+	\item[Height] The height of a block refers to the number of previously appended blocks to the blockchain. This parameter is needed for the PoS condition (Section \ref{pos-condition}) as well as the slashing condition (Section \ref{validation}).
+	\item[SlashedAddress] A validator can submit a slashing proof when appending a block. Therefore, a validator checks if another validator has built on two competing chains within the block span of the slashing window size. This parameter is set to 0 by default if no proof is included. Otherwise, it holds the address of the misbehaving node that must be punished.
+	\item[Two Conflicting Block Hashes] These two parameters exhibit the block hashes where the same node has appended a block on two competing chains within the slashing window size. 
+\end{description}
+
+
+\section{PoS Condition}\label{pos-condition}
+The PoS condition works similar to the PoW condition but with different parameters and a regulated hash rate for each validator. Each parameter has its own unique function in order to secure the system. 
+
+After a node has joined the set of validators and the minimum waiting time (see Section \ref{system-parameters}) has passed, it is eligible to append blocks to the blockchain. For doing so it must provide a valid \textit{TimeInSeconds} for the PoS condition \ref{pos-condition-formula}. 
+
+\begin{equation} 
+\label{pos-condition-formula}
+\frac{SHA{\text -}256([Seed_{PrevBlocks}] \cdot Seed_{Local} \cdot BlockHeight \cdot TimeInSeconds)}{Coins} \leq Target
+\end{equation}
+
+Each of the parameter provides an important property:
+\begin{description}
+	\item[List of the Previous Seeds($ Seed_{PrevBlocks} $)] An important characteristic of the seed which is included in every block is the immutability of the seed. A validator has previously committed to this seed and cannot change it during commitment time. It is called the commitment time when a node adds transactions in form of a block to the blockchain by broadcasting the proposed block. The seed is used for the random election process for the upcoming block. As highlighted in Section \ref{ppcoin} a node must not be able to modify the random election process during commitment time. 
+	By including a list of the previous seeds a stake grinding attack becomes unfeasible. In Section \ref{stake-grinding-attacks} stake grinding attacks are revisited and evaluated.
+	
+	\item[Local Seed($ Seed_{Local} $)] All parameters in the Condition \ref{pos-condition-formula} are the same for each validator in the network except the local seed. Without the local seed parameter, the node with most coins would always meet the condition first (smallest $ TimeInSeconds $). The local seed individualizes the PoS condition to each validator and therefore, a validator with a low amount of coins also has the possibility to append a block to the blockchain. 
+	
+	\item[Height of the Block($ BlockHeight $)] The height of a block is characterized by the number of previously added blocks in the blockchain plus one.
+	
+	\item[Amount of Coins($ Coins $)] By dividing up the number of coins that a validator possesses, the election process becomes proportional to the stake. Without this division every economically acting node would create new accounts that possess exactly the minimum staking in order to maximize its staking reward.
+	
+	\item[Difficulty of the PoS Condition($ Target $)] Similar to the PoW condition \cite{bazo_paper} the difficulty in the PoS protocol can be adjusted with this global variable in order to determine the speed of the blockchain. As the number of validators in-/decreases the difficulty is adjusted accordingly. The $ Target $ is recalculated and adjusted based on the measured average block interval \cite{bazo_paper}.
+\end{description}
+
+
+\section{Validation}\label{validation}
+When a new block is received each validator checks the following conditions whether the block is valid or not.
+\begin{description}
+	\item[Minimum Waiting Time] The minimum waiting time requirement is needed in order to prevent stake grinding attacks. Such an attack is described in Section \ref{stake-grinding-without-a-minimum-waiting-time}. The larger the number of blocks the more difficult it becomes for an attacker to perform such an attack. Furthermore, it also sets a validator offline for the number of blocks that is set as the minimum waiting time after appending a block. This is because when adding a block, a new seed is submitted and this also opens the possibility of a stake grinding attack. Therefore, it is desired to adjust the size of the minimum waiting time according to the size of the validator set. The size of the minimum waiting time can be adjusted with a ConfigTx signed by a root account.
+	\item[Hashed Seed] In order to be eligible to append blocks to the blockchain, a node must have previously submitted a hashed seed to join the set of validators. This hashed seed can be submitted as part of a StakeTx or as part of a previously submitted block. This seed is stored in each validators account. Each validator can reconstruct the hash of the seed since the seed is included in the proposed block. If the hashes do not match, the validator has changed the seed during commitment time. In that case the block is rejected.
+	\item[PoS Condition] The current state of the system and the suggested block contain all the needed information to check whether the PoS condition is valid or not.
+	\item[Slashing Condition] When the suggested block includes a proof for a slashing condition, each validator checks for the proof's validity by comparing the height of the two blocks and whether they arise in competing chains or not. If the proof is valid, the beneficiary address receives an addition reward which is determined by a system parameter. Further, the slashed address loses its position in the validator set as well as the minimum amount of coins that is required to be part of the validator set.
+	\item[Clock Speed] When a node tries to manipulate its clock speed, the suggested block will be ignored if the submitted time is too far in the future. This threshold is set with a system parameter.
+\end{description}
+
+\subsection{Competing Chains}
+Due to latency and the nature of the PoS condition it is possible that blockchain forks and two or more chains are competing each other. In such a case the protocol follows the same principle as in a PoW system:
+
+\begin{enumerate}
+	\item \textbf{Same Height}: A validator takes the first received valid block and rejects all blocks belonging to a chain that are of the same height or shorter.
+	\item \textbf{Longer Chain}: If a block is received that belongs to a longer valid chain, this chain is used as the valid chain and a rollback is necessary \cite{bazo_paper}.
+\end{enumerate} 
